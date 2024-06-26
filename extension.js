@@ -12,7 +12,7 @@ import Shell from 'gi://Shell';
 
 import * as Layout from 'resource:///org/gnome/shell/ui/layout.js'
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {ANIMATION_TIME} from 'resource:///org/gnome/shell/ui/overview.js';
+import { ANIMATION_TIME } from 'resource:///org/gnome/shell/ui/overview.js';
 
 const HOT_EDGE_PRESSURE_TIMEOUT = 1000; // ms
 const PRESSURE_TRESHOLD = 150;
@@ -79,23 +79,17 @@ class BottomOverview extends Clutter.Actor {
 
 export default class DockUnrollExtension {
     _showPanel() {
-        Main.panel.height = this._panel_height;
+        Main.panel.height = this._panelHeight;
 
         Main.panel.ease({
-            duration: ANIMATION_TIME * 2,
-            opacity: this._panel_opacity,
+            duration: ANIMATION_TIME,
+            opacity: this._panelOpacity,
         });
     }
 
     _hidePanel() {
-        Main.panel.ease({
-            duration: ANIMATION_TIME,
-            height: 0.01,
-            onComplete: () => {
-                Main.panel.opacity = 0;
-                Main.layoutManager._updateHotCorners();
-            },
-        });
+        Main.panel.height = 0.01;
+        Main.panel.opacity = 0;
     }
 
     _updateHotEdges() {
@@ -135,14 +129,14 @@ export default class DockUnrollExtension {
         Main.layoutManager.connectObject('hot-corners-changed', this._updateHotEdges.bind(this), this);
         this._updateHotEdges();
 
-        this._panel_height = Main.panel.height;
-        this._panel_opacity = Main.panel.opacity;
+        this._panelHeight = Main.panel.height;
+        this._panelOpacity = Main.panel.opacity;
 
         this._hidePanel();
 
         Main.overview.connectObject(
             'showing', this._showPanel.bind(this),
-            'hidden', this._hidePanel.bind(this),
+            'hiding', this._hidePanel.bind(this),
             this);
     }
 
@@ -151,8 +145,8 @@ export default class DockUnrollExtension {
 
         this._showPanel();
 
-        this._panel_height = null;
-        this._panel_opacity = null;
+        this._panelHeight = null;
+        this._panelOpacity = null;
 
         Main.layoutManager.disconnectObject(this);
         Main.layoutManager._updateHotCorners();
