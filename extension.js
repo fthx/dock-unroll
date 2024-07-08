@@ -9,33 +9,15 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
-import St from 'gi://St';
 
 import * as Layout from 'resource:///org/gnome/shell/ui/layout.js'
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import { ANIMATION_TIME } from 'resource:///org/gnome/shell/ui/overview.js';
 
 const HOT_EDGE_PRESSURE_TIMEOUT = 1000; // ms
 const PRESSURE_TRESHOLD = 150;
 const EDGE_SIZE = 100; // %
-const UNLOCKED_BUTTON_OPACITY = 128;
 
-
-const PanelLockButton = GObject.registerClass(
-class PanelLockButton extends PanelMenu.Button {
-    _init() {
-        super._init();
-
-        this._box = new St.BoxLayout({reactive: true, style_class: 'panel-button'});
-        this._icon = new St.Icon({icon_name: 'focus-top-bar-symbolic', style_class: 'system-status-icon'});
-
-        this._box.add_child(this._icon);
-        this.add_child(this._box);
-
-        this.opacity = UNLOCKED_BUTTON_OPACITY;
-    }
-});
 
 const BottomOverview = GObject.registerClass(
 class BottomOverview extends Clutter.Actor {
@@ -96,13 +78,8 @@ class BottomOverview extends Clutter.Actor {
 });
 
 export default class DockUnrollExtension {
-    _showPanel() {
-        if (this._panelIsLocked) {
-            return;
-        }
-
+    _showPanel() {     
         Main.panel.height = this._panelHeight;
-
         Main.panel.ease({
             duration: ANIMATION_TIME,
             opacity: this._panelOpacity,
@@ -110,10 +87,6 @@ export default class DockUnrollExtension {
     }
 
     _hidePanel() {
-        if (this._panelIsLocked) {
-            return;
-        }
-
         Main.panel.height = 0.01;
         Main.panel.opacity = 0;
     }
@@ -151,62 +124,33 @@ export default class DockUnrollExtension {
         }
     }
 
-    _on_button_clicked() {
-        if (this._panelIsLocked) {
-            this._panelIsLocked = false;
-            this._lockButton.opacity = UNLOCKED_BUTTON_OPACITY;
-
-            if (!Main.overview.visible) {
-                Main.panel.ease({
-                    duration: ANIMATION_TIME,
-                    height: 0.01,
-                    onComplete: () => {
-                        Main.panel.opacity = 0;
-                    },
-                });
-            }
-        } else {
-            this._panelIsLocked = true;
-            this._lockButton.opacity = 255;
-        }
-    }
-
     enable() {
-        Main.layoutManager.connectObject('hot-corners-changed', this._updateHotEdges.bind(this), this);
+        Main.layoutManager.connectObject(
+            'hot-corners-changed',
+            this._updateHotEdges.bind(this),
+            this);
         this._updateHotEdges();
 
         this._panelHeight = Main.panel.height;
         this._panelOpacity = Main.panel.opacity;
 
         this._hidePanel();
-
+        
         Main.overview.connectObject(
             'showing', this._showPanel.bind(this),
             'hiding', this._hidePanel.bind(this),
             this);
-
-        this._panelIsLocked = false;
-        this._lockButton = new PanelLockButton();
-        Main.panel.addToStatusArea('Panel lock', this._lockButton);
-
-        this._lockButton.connectObject('button-press-event', this._on_button_clicked.bind(this), this);
     }
 
     disable() {
-        this._lockButton.disconnectObject(this);
-
-        this._lockButton.destroy();
-        this._lockButton = null;
-        this._panelIsLocked = null;
+        this._showPanel();
 
         Main.overview.disconnectObject(this);
-
-        this._showPanel();
+        Main.layoutManager.disconnectObject(this);
+        
+        Main.layoutManager._updateHotCorners();
 
         this._panelHeight = null;
         this._panelOpacity = null;
-
-        Main.layoutManager.disconnectObject(this);
-        Main.layoutManager._updateHotCorners();
     }
 }
